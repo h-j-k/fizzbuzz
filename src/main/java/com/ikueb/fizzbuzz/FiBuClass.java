@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -18,7 +19,7 @@ import java.util.stream.Stream;
 public final class FiBuClass implements FiBu {
 
     // this must preceed any public static final instances
-    private static final List<FiBuClass> values = new ArrayList<>();
+    private static final List<FiBu> values = new ArrayList<>();
 
     private final long factor;
     private final String output;
@@ -64,7 +65,7 @@ public final class FiBuClass implements FiBu {
      * @return a new instance
      * @see #addAll(Map)
      */
-    public static FiBuClass add(long factor, final String output) {
+    public static FiBu add(long factor, final String output) {
         final Map<Long, String> map = new HashMap<>();
         map.put(Long.valueOf(factor), output);
         return addAll(map).iterator().next();
@@ -79,8 +80,8 @@ public final class FiBuClass implements FiBu {
      * @see FiBuUtils#validate(java.util.function.Supplier)
      * @see FiBuUtils#validate(java.util.function.Supplier, java.util.function.Supplier)
      */
-    public static Collection<FiBuClass> addAll(final Map<Long, String> map) {
-        final Collection<FiBuClass> result = map.entrySet().stream()
+    public static Collection<FiBu> addAll(final Map<Long, String> map) {
+        final Collection<FiBu> result = map.entrySet().stream()
                 .map(v -> new FiBuClass(v.getKey().longValue(), v.getValue()))
                 .collect(Collectors.toList());
         FiBuUtils.validate(() -> { return result.stream(); });
@@ -90,23 +91,43 @@ public final class FiBuClass implements FiBu {
     }
 
     /**
+     * @param factor the value to check
+     * @return an {@link Optional} container over a {@link FiBuClass} instance
+     * @see FiBuUtils#get(Stream, long)
+     */
+    public static Optional<FiBu> get(long factor) {
+        return FiBuUtils.get(valueStream(), factor);
+    }
+
+    /**
+     * @param factors the values to check
+     * @return a {@link Collection} of found instances, which may be less than the
+     *         number of {@code factors}
+     * @see FiBuUtils#getAll(Stream, long...)
+     */
+    public static Collection<FiBu> getAll(long... factors) {
+        return FiBuUtils.getAll(valueStream(), factors);
+    }
+
+    /**
      * Removes the internal reference to {@code value}.
      *
      * @param value the value to remove
      * @return {@true} if {@code value} was removed successfully
      */
-    public static boolean remove(final FiBuClass value) {
-        return values.remove(value);
+    public static boolean remove(long value) {
+        final Optional<FiBu> element = get(value);
+        return element.isPresent() && values.remove(element.get());
     }
 
     /**
      * Removes all internal references.
      */
-    public static void removeAll() {
+    public static void reset() {
         values.clear();
     }
 
-    public static Stream<FiBuClass> valueStream() {
+    public static Stream<FiBu> valueStream() {
         return values.stream();
     }
 }

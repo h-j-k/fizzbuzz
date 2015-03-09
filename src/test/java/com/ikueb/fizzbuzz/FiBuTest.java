@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -21,9 +22,11 @@ import org.testng.annotations.Test;
 public class FiBuTest {
 
     private static final long MAGIC = 23;
+    private static final String FIZZ = FiBuEnum.THREE.getOutput();
+    private static final String BUZZ = FiBuEnum.FIVE.getOutput();
 
     /**
-     * Syntatic sugar to replace lambda's {@link String} representation with something
+     * Syntactic sugar to replace lambda's {@link String} representation with something
      * more understandable.
      */
     private enum SourceWrapper {
@@ -38,9 +41,9 @@ public class FiBuTest {
 
     @DataProvider(name = "default")
     public Iterator<Object[]> getDefaultCases() {
-        final Collection<String> transformed = Arrays.asList("1", "2", "Fizz", "4",
-                "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14",
-                "FizzBuzz", "16", "17", "Fizz", "19", "Buzz", "Fizz", "22");
+        final Collection<String> transformed = Arrays.asList("1", "2", FIZZ, "4", BUZZ,
+                FIZZ, "7", "8", FIZZ, BUZZ, "11", FIZZ, "13", "14", FIZZ + BUZZ, "16",
+                "17", FIZZ, "19", BUZZ, FIZZ, "22");
         final Collection<String> noTransform = LongStream.range(1, MAGIC)
                 .mapToObj(Long::toString).collect(Collectors.toList());
         return Stream.of(wrap(SourceWrapper.ENUM, transformed),
@@ -62,28 +65,46 @@ public class FiBuTest {
     }
 
     /**
+     * Test for getting {@link FiBuEnum} values.
+     */
+    @Test
+    public void testFiBuEnumOperations() {
+        final Optional<FiBu> value = FiBuEnum.get(FiBuEnum.THREE.getFactor());
+        assertBoolean(value.isPresent(), true);
+        assertThat(value.get(), equalTo(FiBuEnum.THREE));
+        final LongStream stream = FiBuEnum.valueStream().mapToLong(FiBu::getFactor);
+        assertThat(FiBuEnum.getAll(stream.toArray()), equalTo(FiBuEnum.valueStream()
+                .collect(Collectors.toList())));
+    }
+
+    /**
      * Test for the addition and removal of {@link FiBuClass} instances.
      */
     @Test
-    public void testAdditionAndRemoval() {
-        FiBuClass.removeAll();
-        final FiBuClass seven = FiBuClass.add(7, "Jazz");
-        final FiBuClass eleven = FiBuClass.add(11, "Fuzz");
-        assertThat(seven, not(equalTo(eleven)));
-        assertThat(Integer.valueOf(seven.hashCode()),
-                not(equalTo(Integer.valueOf(eleven.hashCode()))));
-        final Iterator<FiBuClass> iterator = FiBuClass.valueStream().iterator();
-        assertThat(iterator.next(), equalTo(seven));
-        assertThat(iterator.next(), equalTo(eleven));
-        assertThat(Boolean.valueOf(FiBuClass.remove(seven)), equalTo(Boolean.TRUE));
-        assertThat(FiBuClass.valueStream().iterator().next(), equalTo(eleven));
-        assertThat(Boolean.valueOf(FiBuClass.remove(eleven)), equalTo(Boolean.TRUE));
-        final long newFactor = 13;
-        final String newOutput = "Bazz";
-        final FiBuClass newValue = FiBuClass.add(newFactor, newOutput);
-        FiBuClass.remove(newValue);
-        assertThat(FiBuClass.add(newFactor, newOutput), equalTo(newValue));
-        FiBuClass.removeAll();
+    public void testFiBuClassOperations() {
+        FiBuClass.reset();
+        final long[] newFactors = new long[] { 7, 11, 13 };
+        final String[] newOutputs = new String[] { "Jazz", "Fuzz", "Bazz" };
+        final FiBu newValue = FiBuClass.add(newFactors[0], newOutputs[0]);
+        final Map<Long, String> map = new HashMap<>();
+        for (int i = 1; i < newFactors.length; i++) {
+            map.put(Long.valueOf(newFactors[i]), newOutputs[i]);
+        }
+        final Collection<FiBu> newValues = FiBuClass.addAll(map);
+        FiBuUtils.validate(FiBuMain.CLASS, FiBuMain.COMBINED);
+        final Iterator<FiBu> newIterator = newValues.iterator();
+        final FiBu firstValue = newIterator.next();
+        final FiBu secondValue = newIterator.next();
+        assertThat(firstValue, not(equalTo(secondValue)));
+        assertBoolean(firstValue.hashCode() == secondValue.hashCode(), false);
+        assertBoolean(newIterator.hasNext(), false);
+        final Iterator<FiBu> streamIterator = FiBuClass.valueStream().iterator();
+        assertThat(streamIterator.next(), equalTo(newValue));
+        assertBoolean(FiBuClass.remove(newValue.getFactor()), true);
+        assertBoolean(FiBuClass.get(newValue.getFactor()).isPresent(), false);
+        assertBoolean(FiBuClass.remove(newValue.getFactor()), false);
+        assertThat(FiBuClass.getAll(newFactors), equalTo(newValues));
+        FiBuClass.reset();
         assertThat(Long.valueOf(FiBuClass.valueStream().count()),
                 equalTo(Long.valueOf(0)));
     }
@@ -92,18 +113,17 @@ public class FiBuTest {
     public Iterator<Object[]> getUpdatedTestCases() {
         final long newFactor = 7;
         final String newOutput = "Jazz";
-        FiBuClass.removeAll();
+        FiBuClass.reset();
         FiBuClass.add(newFactor, newOutput);
-        final Collection<String> enumOutput = Arrays.asList("1", "2", "Fizz", "4",
-                "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14",
-                "FizzBuzz", "16", "17", "Fizz", "19", "Buzz", "Fizz", "22");
+        final Collection<String> enumOutput = Arrays.asList("1", "2", FIZZ, "4", BUZZ,
+                FIZZ, "7", "8", FIZZ, BUZZ, "11", FIZZ, "13", "14", FIZZ + BUZZ, "16",
+                "17", FIZZ, "19", BUZZ, FIZZ, "22");
         final Collection<String> classOutput = LongStream.range(1, MAGIC)
                 .mapToObj(v -> v % newFactor == 0 ? newOutput : Long.toString(v))
                 .collect(Collectors.toList());
-        final Collection<String> combined = Arrays.asList("1", "2", "Fizz", "4",
-                "Buzz", "Fizz", newOutput, "8", "Fizz", "Buzz", "11", "Fizz", "13",
-                newOutput, "FizzBuzz", "16", "17", "Fizz", "19", "Buzz", "Fizz"
-                        + newOutput, "22");
+        final Collection<String> combined = Arrays.asList("1", "2", FIZZ, "4", BUZZ,
+                FIZZ, newOutput, "8", FIZZ, BUZZ, "11", FIZZ, "13", newOutput, FIZZ
+                        + BUZZ, "16", "17", FIZZ, "19", BUZZ, FIZZ + newOutput, "22");
         return Stream.of(wrap(SourceWrapper.ENUM, enumOutput),
                 wrap(SourceWrapper.CLASS, classOutput),
                 wrap(SourceWrapper.COMBINED, combined)).iterator();
@@ -127,23 +147,27 @@ public class FiBuTest {
         assertThat(FiBuUtils.process(1, MAGIC, stream.source), equalTo(expected));
     }
 
+    private static final String BAD_OUTPUT_MESSAGE = "output null, empty or all whitespaces";
+    private static final String FACTOR_OF_MESSAGE = "same/factor/multiple of ";
+    private static final String SAME_OUTPUT_MESSAGE = "same output as ";
+
     /**
-     * A wrapper for test payload that will generate a {@link IllegalStateException}.
+     * A wrapper for a test payload that will generate a {@link IllegalStateException}.
      */
     private enum ExceptionWrapper {
         INVALID_FACTOR(true, 1, "ONE", "factor < 2"),
-        NULL_OUTPUT(true, 2, null, "output null, empty or all whitespaces"),
-        EMPTY_OUTPUT(true, 2, "", "output null, empty or all whitespaces"),
-        WHITESPACE_OUTPUT(true, 2, "  ", "output null, empty or all whitespaces"),
-        MULTI_WITH_FACTOR(true, FiBuEnum.THREE.getFactor(), "THREE", "same/factor/multiple of "),
-        MULTI_WITH_SAME_OUTPUT(true, MAGIC, FiBuEnum.THREE.getOutput(), "same output as "),
-        FACTOR(false, FiBuEnum.THREE.getFactor(), "THREE", "same/factor/multiple of "),
-        SAME_OUTPUT(false, MAGIC, FiBuEnum.THREE.getOutput(), "same output as ");
+        NULL_OUTPUT(true, 2, null, BAD_OUTPUT_MESSAGE),
+        EMPTY_OUTPUT(true, 2, "", BAD_OUTPUT_MESSAGE),
+        WHITESPACE_OUTPUT(true, 2, "  ", BAD_OUTPUT_MESSAGE),
+        MULTI_WITH_FACTOR(true, FiBuEnum.THREE.getFactor(), "THREE", FACTOR_OF_MESSAGE),
+        MULTI_WITH_SAME_OUTPUT(true, MAGIC, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_MESSAGE),
+        FACTOR(false, FiBuEnum.THREE.getFactor(), "THREE", FACTOR_OF_MESSAGE),
+        SAME_OUTPUT(false, MAGIC, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_MESSAGE);
 
         private final boolean failOnAdd;
         private final long newFactor;
         private final String newOutput;
-        private final String expectedExceptionMessage;
+        private final String expectedMessage;
 
         /**
          * @param failOnAdd {@code true} if we should not be able to create the new
@@ -160,7 +184,7 @@ public class FiBuTest {
             this.failOnAdd = failOnAdd;
             this.newFactor = newFactor;
             this.newOutput = newOutput;
-            this.expectedExceptionMessage = expectedExceptionMessage;
+            this.expectedMessage = expectedExceptionMessage;
         }
 
         /**
@@ -191,39 +215,40 @@ public class FiBuTest {
      * <li>adding with {@code null} {@code output}</li>
      * <li>adding with an empty {@code output}</li>
      * <li>adding {@code output} consisting of whitespaces</li>
-     * <li>adding a same {@code factor}</li>
-     * <li>adding a same {@code output}</li>
      * <li>adding multiple values, which are factors of each other</li>
      * <li>adding multiple values, which have the same {@code output}</li>
+     * <li>adding a same {@code factor}</li>
+     * <li>adding a same {@code output}</li>
      * </ul>
+     * The last two tests are done by validating against {@link FiBuEnum}'s values.
      *
      * @param test the test payload that will generate a {@link IllegalStateException},
-     *            and then assert for expected message
+     *            and then assert for the expected message
      * @see ExceptionWrapper
      * @see #getExceptionCases()
      */
     @Test(dataProvider = "exception")
     public void testExceptionCase(final ExceptionWrapper test) {
         try {
-            final Collection<FiBuClass> newValues = FiBuClass.addAll(test.getValues());
-            assertThat(FiBuClass.valueStream().collect(Collectors.toList()),
-                    equalTo(newValues));
-            FiBuClass.valueStream().forEach(
-                    v -> assertThat(v, not(equalTo(FiBuEnum.THREE))));
-        } catch (IllegalStateException e) {
+            FiBuClass.addAll(test.getValues());
             if (test.failOnAdd) {
-                assertThat(e.getMessage(),
-                        containsString(test.expectedExceptionMessage));
-                return;
+                throw new AssertionError();
             }
-            throw e;
+        } catch (final IllegalStateException e) {
+            assertThat(e.getMessage(), containsString(test.expectedMessage));
+            return;
         }
         try {
             FiBuUtils.validate(FiBuMain.CLASS, FiBuMain.COMBINED);
-        } catch (IllegalStateException e) {
-            assertThat(e.getMessage(), containsString(test.expectedExceptionMessage));
-            FiBuClass.removeAll();
+            throw new AssertionError();
+        } catch (final IllegalStateException e) {
+            assertThat(e.getMessage(), containsString(test.expectedMessage));
+            FiBuClass.reset();
         }
+    }
+
+    private static void assertBoolean(boolean actual, boolean expected) {
+        assertThat(Boolean.valueOf(actual), equalTo(Boolean.valueOf(expected)));
     }
 
     private static Object[] wrap(Object... values) {

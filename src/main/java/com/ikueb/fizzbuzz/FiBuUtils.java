@@ -1,7 +1,9 @@
 package com.ikueb.fizzbuzz;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -11,11 +13,8 @@ import java.util.stream.Stream;
 /**
  * Utilities class for performing on {@link FiBu} elements.
  */
-public final class FiBuUtils {
-
-    private FiBuUtils() {
-        // empty
-    }
+public enum FiBuUtils {
+    INSTANCE;
 
     /**
      * Creates a sequence of numbers between {@code a} and {@code b}
@@ -81,6 +80,28 @@ public final class FiBuUtils {
         incoming.get().forEach(a -> throwIf(current, b -> isSameOutput(a, b),
                 "same output as " + a));
         return true;
+    }
+
+    /**
+     * @param source the {@link Stream} to check
+     * @param factor the value to check
+     * @return an {@link Optional} container over an instance of {@link FiBu}
+     */
+    public static Optional<FiBu> get(final Stream<? extends FiBu> source, long factor) {
+        return getAll(source, factor).stream().findFirst();
+    }
+
+    /**
+     * @param source the {@link Stream} to check
+     * @param factors the values to check
+     * @return a {@link Collection} of found instances, which may be less than the
+     *         number of {@code factors}
+     */
+    public static Collection<FiBu> getAll(final Stream<? extends FiBu> source,
+            long... factors) {
+        return source.filter(v -> Arrays.stream(factors)
+                .anyMatch(f -> v.getFactor() == f))
+                .collect(Collectors.toList());
     }
 
     /**

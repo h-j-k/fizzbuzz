@@ -1,5 +1,7 @@
 package com.ikueb.fizzbuzz;
 
+import java.util.Collection;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -37,7 +39,26 @@ public enum FiBuEnum implements FiBu {
         return FiBuUtils.toString(name(), this);
     }
 
-    public static Stream<FiBuEnum> valueStream() {
+    /**
+     * @param factor the value to check
+     * @return an {@link Optional} container over a {@link FiBuClass} instance
+     * @see FiBuUtils#get(Stream, long)
+     */
+    public static Optional<FiBu> get(long factor) {
+        return FiBuUtils.get(valueStream(), factor);
+    }
+
+    /**
+     * @param factors the values to check
+     * @return a {@link Collection} of found instances, which may be less than the
+     *         number of {@code factors}
+     * @see FiBuUtils#getAll(Stream, long...)
+     */
+    public static Collection<FiBu> getAll(long... factors) {
+        return FiBuUtils.getAll(valueStream(), factors);
+    }
+
+    public static Stream<FiBu> valueStream() {
         return Stream.of(values());
     }
 }
