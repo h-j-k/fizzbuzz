@@ -69,6 +69,7 @@ public class FiBuTest {
      */
     @Test
     public void testFiBuEnumOperations() {
+        assertBoolean(FiBuEnum.get(0).isPresent(), false);
         final Optional<FiBu> value = FiBuEnum.get(FiBuEnum.THREE.getFactor());
         assertBoolean(value.isPresent(), true);
         assertThat(value.get(), equalTo(FiBuEnum.THREE));
