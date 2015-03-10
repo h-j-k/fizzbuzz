@@ -87,7 +87,8 @@ public enum FiBuUtils {
      * @param factor the value to check
      * @return an {@link Optional} container over an instance of {@link FiBu}
      */
-    public static Optional<FiBu> get(final Stream<? extends FiBu> source, long factor) {
+    public static Optional<FiBu> get(final Supplier<Stream<? extends FiBu>> source,
+            long factor) {
         return getAll(source, factor).stream().findFirst();
     }
 
@@ -97,9 +98,9 @@ public enum FiBuUtils {
      * @return a {@link Collection} of found instances, which may be less than the
      *         number of {@code factors}
      */
-    public static Collection<FiBu> getAll(final Stream<? extends FiBu> source,
+    public static Collection<FiBu> getAll(final Supplier<Stream<? extends FiBu>> source,
             long... factors) {
-        return source.filter(v -> Arrays.stream(factors)
+        return source.get().filter(v -> Arrays.stream(factors)
                 .anyMatch(f -> v.getFactor() == f))
                 .collect(Collectors.toList());
     }
