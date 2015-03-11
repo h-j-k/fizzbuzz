@@ -21,26 +21,27 @@ public enum FiBuUtils {
      * and process them using the {@code source} of {@link Stream}
      * @param a one of the sequence's boundary
      * @param b the sequence's other boundary
-     * @param source the {@link Supplier} supplying the {@link Stream}
+     * @param source the source of the processing {@link Stream}
      * @return the outcome
-     * @see #process(long, Supplier)
+     * @see #process(long, Stream)
      */
     public static Collection<String> process(long a, long b,
             final Supplier<Stream<? extends FiBu>> source) {
         return LongStream.range(Math.min(a, b), Math.max(a, b))
-                .mapToObj(i -> process(i, source)).collect(Collectors.toList());
+                .mapToObj(i -> process(i, source.get()))
+                .collect(Collectors.toList());
     }
 
     /**
      * @param i the number to handle
-     * @param source the {@link Supplier} supplying the {@link Stream}
+     * @param source the {@link Stream} to process on the number
      * @return a concatenation of outputs of {@code i}'s factors, or {@code i}
      */
     private static String process(long i,
-            final Supplier<Stream<? extends FiBu>> source) {
-        final String temp = source.get().filter(v -> i % v.getFactor() == 0)
+            final Stream<? extends FiBu> source) {
+        final String result = source.filter(v -> i % v.getFactor() == 0)
                 .map(v -> v.getOutput()).collect(Collectors.joining());
-        return temp.isEmpty() ? Long.toString(i) : temp;
+        return result.isEmpty() ? Long.toString(i) : result;
     }
 
     /**
@@ -67,17 +68,17 @@ public enum FiBuUtils {
      * @param incoming the {@link Supplier} supplying the incoming {@link Stream}
      * @param current the {@link Supplier} supplying the current {@link Stream}
      * @return {@code true} if the incoming {@link Stream} passes validation
-     * @see #throwIf(Supplier, Predicate, String)
+     * @see #throwIf(Stream, Predicate, String)
      * @throws IllegalStateException if validation fails
      */
     public static boolean validate(final Supplier<Stream<? extends FiBu>> incoming,
             final Supplier<Stream<? extends FiBu>> current) {
-        throwIf(incoming, v -> v.getFactor() < 2, "factor < 2");
-        throwIf(incoming, v -> Objects.toString(v.getOutput(), "").trim().isEmpty(),
+        throwIf(incoming.get(), v -> v.getFactor() < 2, "factor < 2");
+        throwIf(incoming.get(), v -> Objects.toString(v.getOutput(), "").trim().isEmpty(),
                 "output null, empty or all whitespaces");
-        incoming.get().forEach(a -> throwIf(current, b -> isFactor(a, b),
+        incoming.get().forEach(a -> throwIf(current.get(), b -> isFactor(a, b),
                 "same/factor/multiple of " + a));
-        incoming.get().forEach(a -> throwIf(current, b -> isSameOutput(a, b),
+        incoming.get().forEach(a -> throwIf(current.get(), b -> isSameOutput(a, b),
                 "same output as " + a));
         return true;
     }
@@ -87,8 +88,7 @@ public enum FiBuUtils {
      * @param factor the value to check
      * @return an {@link Optional} container over an instance of {@link FiBu}
      */
-    public static Optional<FiBu> get(final Supplier<Stream<? extends FiBu>> source,
-            long factor) {
+    public static Optional<FiBu> get(final Stream<? extends FiBu> source, long factor) {
         return getAll(source, factor).stream().findFirst();
     }
 
@@ -98,9 +98,9 @@ public enum FiBuUtils {
      * @return a {@link Collection} of found instances, which may be less than the
      *         number of {@code factors}
      */
-    public static Collection<FiBu> getAll(final Supplier<Stream<? extends FiBu>> source,
+    public static Collection<FiBu> getAll(final Stream<? extends FiBu> source,
             long... factors) {
-        return source.get().filter(v -> Arrays.stream(factors)
+        return source.filter(v -> Arrays.stream(factors)
                 .anyMatch(f -> v.getFactor() == f))
                 .collect(Collectors.toList());
     }
@@ -129,14 +129,14 @@ public enum FiBuUtils {
      * Syntatic sugar to throw {@link IllegalStateException}
      * from any filtered value of a {@link Stream}.
      *
-     * @param source the {@link Supplier} supplying the {@link Stream}
+     * @param source the {@link Stream} to check
      * @param filter the {@link Predicate} to apply the filter with
      * @param suffix the {@link String} to append to the thrown {@link Exception}
      * @throws IllegalStateException if there are any filtered values
      */
-    private static <T> void throwIf(final Supplier<Stream<? extends T>> source,
+    private static <T> void throwIf(final Stream<? extends T> source,
             final Predicate<T> filter, final String suffix) {
-        source.get().filter(filter).findAny().ifPresent(x -> {
+        source.filter(filter).findAny().ifPresent(x -> {
             throw new IllegalStateException(x + ": " + suffix); });
     }
 

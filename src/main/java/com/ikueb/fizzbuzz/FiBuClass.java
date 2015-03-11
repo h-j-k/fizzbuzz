@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -94,20 +93,20 @@ public final class FiBuClass implements FiBu {
     /**
      * @param factor the value to check
      * @return an {@link Optional} container over a {@link FiBuClass} instance
-     * @see FiBuUtils#get(Supplier, long)
+     * @see FiBuUtils#get(Stream, long)
      */
     public static Optional<FiBu> get(long factor) {
-        return FiBuUtils.get(FiBuClass::valueStream, factor);
+        return FiBuUtils.get(valueStream(), factor);
     }
 
     /**
      * @param factors the values to check
      * @return a {@link Collection} of found instances, which may be less than the
      *         number of {@code factors}
-     * @see FiBuUtils#getAll(Supplier, long...)
+     * @see FiBuUtils#getAll(Stream, long...)
      */
     public static Collection<FiBu> getAll(long... factors) {
-        return FiBuUtils.getAll(FiBuClass::valueStream, factors);
+        return FiBuUtils.getAll(valueStream(), factors);
     }
 
     /**

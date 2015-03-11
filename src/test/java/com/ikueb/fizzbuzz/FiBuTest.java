@@ -12,6 +12,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -37,9 +38,9 @@ public class FiBuTest {
         assertBoolean(FiBuEnum.get(0).isPresent(), false);
         assertThat(FiBuEnum.get(FiBuEnum.THREE.getFactor()).get(),
                 equalTo(FiBuEnum.THREE));
-        final LongStream stream = FiBuEnum.valueStream().mapToLong(FiBu::getFactor);
-        assertThat(FiBuEnum.getAll(stream.toArray()),
-                equalTo(FiBuEnum.valueStream().collect(Collectors.toList())));
+        assertThat(FiBuEnum.getAll(FiBuEnum.valueStream()
+                .mapToLong(FiBu::getFactor).toArray()),
+                equalTo(Arrays.asList(FiBuEnum.values())));
     }
 
     /**
@@ -57,20 +58,20 @@ public class FiBuTest {
         final FiBu newValue = FiBuClass.add(newFactors[0], newOutputs[0]);
         final Collection<FiBu> newValues = FiBuClass.addAll(map);
         FiBuUtils.validate(FiBuMain.CLASS, FiBuMain.COMBINED);
-        final Iterator<FiBu> newIterator = newValues.iterator();
-        final FiBu first = newIterator.next();
-        final FiBu second = newIterator.next();
-        assertBoolean(newIterator.hasNext(), false);
-        assertThat(first, not(equalTo(second)));
-        assertBoolean(first.hashCode() == second.hashCode(), false);
-        final Iterator<FiBu> streamIterator = FiBuClass.valueStream().iterator();
-        assertThat(streamIterator.next(), equalTo(newValue));
+        final Iterator<FiBu> iterator = newValues.iterator();
+        final FiBu a = iterator.next();
+        final FiBu b = iterator.next();
+        assertBoolean(iterator.hasNext(), false);
+        assertThat(a, not(equalTo(b)));
+        assertThat(Integer.valueOf(a.hashCode()),
+                not(equalTo(Integer.valueOf(b.hashCode()))));
+        assertThat(FiBuClass.valueStream().findFirst().get(), equalTo(newValue));
         assertBoolean(FiBuClass.remove(newValue.getFactor()), true);
         assertBoolean(FiBuClass.get(newValue.getFactor()).isPresent(), false);
         assertBoolean(FiBuClass.remove(newValue.getFactor()), false);
         assertThat(FiBuClass.getAll(newFactors), equalTo(newValues));
         FiBuClass.reset();
-        assertBoolean(FiBuClass.valueStream().count() == 0, true);
+        assertBoolean(FiBuClass.valueStream().findAny().isPresent(), false);
     }
 
     /**
@@ -87,8 +88,6 @@ public class FiBuTest {
     }
 
     private static interface TestCase {
-        static final long END = 23;
-
         void doTest();
     }
 
@@ -99,6 +98,7 @@ public class FiBuTest {
      * @see FiBuUtils#process(long, long, Supplier)
      */
     private static interface ProcessingTestCase extends TestCase {
+        static final long END = 23;
         static final String FIZZ = FiBuEnum.THREE.getOutput();
         static final String BUZZ = FiBuEnum.FIVE.getOutput();
 
@@ -107,7 +107,8 @@ public class FiBuTest {
 
         @Override
         default void doTest() {
-            assertThat(FiBuUtils.process(1, END, getSource()), equalTo(getResult()));
+            assertThat(FiBuUtils.process(1, END, getSource()),
+                    equalTo(getResult()));
         }
     }
 
@@ -124,19 +125,19 @@ public class FiBuTest {
 
         @Override
         public Collection<String> getResult() {
-            final Collection<String> transformed = Arrays.asList("1", "2", FIZZ, "4",
-                    BUZZ, FIZZ, "7", "8", FIZZ, BUZZ, "11", FIZZ, "13", "14", FIZZ
-                            + BUZZ, "16", "17", FIZZ, "19", BUZZ, FIZZ, "22");
+            final Collection<String> expected = Arrays.asList("1", "2", FIZZ,
+                    "4", BUZZ, FIZZ, "7", "8", FIZZ, BUZZ, "11", FIZZ, "13",
+                    "14", FIZZ + BUZZ, "16", "17", FIZZ, "19", BUZZ, FIZZ, "22");
             switch (this) {
             case ENUM:
-                return transformed;
+                return expected;
             case CLASS:
                 return LongStream.range(1, END).mapToObj(Long::toString)
                         .collect(Collectors.toList());
             case COMBINED:
-                return transformed;
+                return expected;
             default:
-                throw new RuntimeException("Unexpected enum value.");
+                return Collections.EMPTY_LIST;
             }
         }
     }
@@ -166,9 +167,9 @@ public class FiBuTest {
         public Collection<String> getResult() {
             switch (this) {
             case ENUM:
-                return Arrays.asList("1", "2", FIZZ, "4", BUZZ, FIZZ, "7", "8", FIZZ,
-                        BUZZ, "11", FIZZ, "13", "14", FIZZ + BUZZ, "16", "17", FIZZ,
-                        "19", BUZZ, FIZZ, "22");
+                return Arrays.asList("1", "2", FIZZ, "4", BUZZ, FIZZ, "7", "8",
+                        FIZZ, BUZZ, "11", FIZZ, "13", "14", FIZZ + BUZZ, "16",
+                        "17", FIZZ, "19", BUZZ, FIZZ, "22");
             case CLASS:
                 return LongStream.range(1, END)
                         .mapToObj(v -> v % FACTOR == 0 ? OUTPUT : Long.toString(v))
@@ -178,7 +179,7 @@ public class FiBuTest {
                         FIZZ, BUZZ, "11", FIZZ, "13", OUTPUT, FIZZ + BUZZ, "16",
                         "17", FIZZ, "19", BUZZ, FIZZ + OUTPUT, "22");
             default:
-                throw new RuntimeException("Unexpected enum value.");
+                return Collections.EMPTY_LIST;
             }
         }
     }
@@ -208,9 +209,9 @@ public class FiBuTest {
         EMPTY_OUTPUT(true, 2, "", BAD_OUTPUT),
         WHITESPACE_OUTPUT(true, 2, "  ", BAD_OUTPUT),
         MULTI_FACTOR(true, FiBuEnum.THREE.getFactor(), "THREE", FACTOR_OF),
-        MULTI_SAME_OUTPUT(true, END, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_AS),
+        MULTI_SAME_OUTPUT(true, 2, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_AS),
         FACTOR(false, FiBuEnum.THREE.getFactor(), "THREE", FACTOR_OF),
-        SAME_OUTPUT(false, END, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_AS);
+        SAME_OUTPUT(false, 2, FiBuEnum.THREE.getOutput(), SAME_OUTPUT_AS);
 
         private final boolean failOnAdd;
         private final long factor;
@@ -240,10 +241,9 @@ public class FiBuTest {
             try {
                 FiBuClass.reset();
                 FiBuClass.addAll(getValues());
-                if (failOnAdd) {
-                    throw new AssertionError();
+                if (!failOnAdd) {
+                    FiBuUtils.validate(FiBuMain.CLASS, FiBuMain.COMBINED);
                 }
-                FiBuUtils.validate(FiBuMain.CLASS, FiBuMain.COMBINED);
                 throw new AssertionError();
             } catch (final IllegalStateException e) {
                 assertThat(e.getMessage(), containsString(expectedMessage));
@@ -266,44 +266,38 @@ public class FiBuTest {
         }
     }
 
+    private static final String TEST_CASES = "test-cases";
+
     @Retention(RetentionPolicy.RUNTIME)
     @Target(ElementType.METHOD)
     private static @interface Case {
         Class<? extends TestCase> provider();
     }
 
-    @DataProvider(name = "test-cases")
+    @DataProvider(name = TEST_CASES)
     public static Iterator<Object[]> getTestCases(final Method method) {
         return getCases(method).map(v -> { return new Object[]{ v }; }).iterator();
     }
 
     private static Stream<TestCase> getCases(final Method method) {
-        if (!method.isAnnotationPresent(Case.class)) {
-            throw new RuntimeException(String.format("Missing @%s on %s",
-                    Case.class.getSimpleName(), method.getName()));
-        }
-        final Class<? extends TestCase> clazz =
-                method.getAnnotation(Case.class).provider();
-        if (!clazz.isEnum()) {
-            throw new RuntimeException("Expecting an enum implementation of "
-                    + TestCase.class.getSimpleName());
-        }
-        return Arrays.stream(clazz.getEnumConstants());
+        return method.isAnnotationPresent(Case.class) ? Stream.of(method
+                .getAnnotation(Case.class).provider()).filter(Class::isEnum)
+                .flatMap(v -> Arrays.stream(v.getEnumConstants())) : Stream.empty();
     }
 
-    @Test(dataProvider = "test-cases")
+    @Test(dataProvider = TEST_CASES)
     @Case(provider = ResultPayload.class)
     public void testDefault(final TestCase testCase) {
         testCase.doTest();
     }
 
-    @Test(dataProvider = "test-cases")
+    @Test(dataProvider = TEST_CASES)
     @Case(provider = EnrichedResultPayload.class)
     public void testEnriched(final TestCase testCase) {
         testCase.doTest();
     }
 
-    @Test(dataProvider = "test-cases")
+    @Test(dataProvider = TEST_CASES)
     @Case(provider = ExceptionPayload.class)
     public void testException(final TestCase testCase) {
         testCase.doTest();
